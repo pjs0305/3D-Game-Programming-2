@@ -479,69 +479,6 @@ D3D12_RASTERIZER_DESC CBillboardObjectsShader::CreateRasterizerState()
 	return(d3dRasterizerDesc);
 }
 
-#define OBJECT_TYPE_GRASS 0x01
-#define OBJECT_TYPE_FLOWER 0x02
-
-void CBillboardObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, 
-	CMesh* pMesh, wchar_t *pszFileName, UINT nType, void *pContext)
-{
-	CHeightMapTerrain *pTerrain = (CHeightMapTerrain *)pContext;
-	// 1 : 1, 2 : 8, 3 : 16, 4 : 24, 5 : 32
-	int xObjects = 250;
-	int zObjects = 250;
-
-	m_nObjects = (xObjects * zObjects);
-
-	CTexture *pTextures;
-	pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
-	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pszFileName, 0);
-
-	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255);
-
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, m_nObjects, 1);
-	CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	CreateConstantBufferViews(pd3dDevice, pd3dCommandList, m_nObjects, m_pd3dcbGameObjects, ncbElementBytes);
-	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 3, true);
-
-	m_pMaterial = new CMaterial();
-	m_pMaterial->SetTexture(pTextures);
-
-	m_ppObjects = new CGameObject*[m_nObjects];
-
-	CGrassObject *pBillboardObject = NULL;
-
-	float fxPitch = 1028.0f / xObjects;
-	float fzPitch = 1028.0f / zObjects;
-
-	float xPosition = 10.0f;
-	for (int i = 0, x = 0; x < xObjects; x++)
-	{
-		xPosition = x * fxPitch;
-		float zPosition = 10.0f;
-		for (int z = 0; z < zObjects; z++)
-		{
-			pBillboardObject = new CGrassObject();
-			pBillboardObject->SetMesh(0, pMesh);
-
-			zPosition = z * fzPitch;
-			float fHeight = pTerrain->GetHeight(xPosition, zPosition);
-			
-			switch (nType)
-			{
-			case OBJECT_TYPE_GRASS:
-				fHeight += 4.0f;
-				break;
-			case OBJECT_TYPE_FLOWER:
-				fHeight += 8.0f;
-			}
-
-			pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
-			pBillboardObject->SetCbvGPUDescriptorHandlePtr(m_d3dCbvGPUDescriptorStartHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * i));
-			m_ppObjects[i++] = pBillboardObject;
-		}
-	}
-}
-
 void CBillboardObjectsShader::ReleaseUploadBuffers()
 {
 	CObjectsShader::ReleaseUploadBuffers();
@@ -570,64 +507,6 @@ void CBillboardObjectsShader::Render(ID3D12GraphicsCommandList *pd3dCommandList)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-
-void CInstancingBillboardObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList,
-	CMesh* pMesh, wchar_t *pszFileName, UINT nType, void *pContext)
-{
-	CHeightMapTerrain *pTerrain = (CHeightMapTerrain *)pContext;
-	// 1 : 1, 2 : 8, 3 : 16, 4 : 24, 5 : 32
-	int xObjects = 200;
-	int zObjects = 200;
-
-	float fxPitch = 1028.0f / xObjects;
-	float fzPitch = 1028.0f / zObjects;
-
-
-	m_nObjects = (xObjects * zObjects);
-
-	CTexture *pTextures;
-	pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
-	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, L"Image/Flower01.dds", 0);
-
-	CreateSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 1);
-	CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 6, true);
-
-	m_pMaterial = new CMaterial();
-	m_pMaterial->SetTexture(pTextures);
-
-	m_ppObjects = new CGameObject*[m_nObjects];
-
-	CGrassObject *pBillboardObject = NULL;
-	
-	float xPosition = 10.0f;
-	for (int i = 0, x = 0; x < xObjects; x++)
-	{
-		xPosition = x * fxPitch;
-		float zPosition = 10.0f;
-		for (int z = 0; z < zObjects; z++)
-		{
-			pBillboardObject = new CGrassObject();
-			pBillboardObject->SetMesh(0, pMesh);
-
-			zPosition = z * fzPitch;
-			float fHeight = pTerrain->GetHeight(xPosition, zPosition);
-
-			switch (nType)
-			{
-			case OBJECT_TYPE_GRASS:
-				fHeight += 2.0f;
-				break;
-			case OBJECT_TYPE_FLOWER:
-				fHeight += 4.0f;
-			}
-
-			pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
-			pBillboardObject->m_nTexture = rand() % 5;
-			m_ppObjects[i++] = pBillboardObject;
-		}
-	}
-}
 
 D3D12_SHADER_BYTECODE CInstancingBillboardObjectsShader::CreateVertexShader(ID3DBlob **ppd3dShaderBlob)
 {
@@ -717,8 +596,28 @@ void CFlowerObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12Graphics
 
 	int xObjects = 200;
 	int zObjects = 200;
-
 	m_nObjects = (xObjects * zObjects);
+
+	float fWidth = pTerrain->GetWidth()- 10.0f;
+	float fLength = pTerrain->GetLength()- 10.0f;
+
+	float fxPitch = fWidth / xObjects;
+	float fzPitch = fLength / zObjects;
+
+	float xPosition = 0.0f;
+	for (int x = 0; x < xObjects; x++)
+	{
+		xPosition += fxPitch;
+		float zPosition = 0.0f;
+
+		for (int z = 0; z < zObjects; z++)
+		{
+			zPosition += fzPitch;
+
+			if (pTerrain->GetColor(xPosition, zPosition) > 200.0f)
+				m_nObjects--;
+		}
+	}
 
 	CTexture *pTextures;
 
@@ -730,7 +629,7 @@ void CFlowerObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12Graphics
 
 	CreateSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 4);
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 7, true);
+	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 6, true);
 
 	m_pMaterial = new CMaterial();
 	m_pMaterial->SetTexture(pTextures);
@@ -739,29 +638,26 @@ void CFlowerObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12Graphics
 
 	CGrassObject *pBillboardObject = NULL;
 
-	float fxPitch = 1028.0f / xObjects;
-	float fzPitch = 1028.0f / zObjects;
-
-	float xPosition = 10.0f;
+	xPosition = 0.0f;
 	for (int i = 0, x = 0; x < xObjects; x++)
 	{
-		xPosition = x * fxPitch;
-		float zPosition = 10.0f;
+		xPosition += fxPitch;
+		float zPosition = 0.0f;
+
 		for (int z = 0; z < zObjects; z++)
 		{
+			zPosition += fzPitch;
+			if (pTerrain->GetColor(xPosition, zPosition) > 200.0f)	continue;
 
 			pBillboardObject = new CGrassObject();
 			pBillboardObject->SetMesh(0, pFlowerMesh);
 
-			zPosition = z * fzPitch;
 			float fHeight = pTerrain->GetHeight(xPosition, zPosition) + 4.0f;
+			
+			if (xPosition > fWidth) xPosition = fWidth;
+			if (zPosition > fLength) zPosition = fLength;
 
-			if (xPosition > 850.0f && xPosition < 970.0f && zPosition > 40.0f && zPosition < 140.0f)
-			{
-				pBillboardObject->SetPosition(850.0f, 100000.0f, 40.0f);
-			}
-			else
-				pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
+			pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
 			pBillboardObject->m_nTexture = rand() % 4;
 			m_ppObjects[i++] = pBillboardObject;
 		}
@@ -790,12 +686,38 @@ void CTreeObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCo
 {
 	CHeightMapTerrain *pTerrain = (CHeightMapTerrain *)pContext;
 
-	CTexturedRectMesh *pTreeMesh = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 40.0f, 70.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	CTexturedRectMesh **ppTreeMesh = new CTexturedRectMesh*[5];
+	ppTreeMesh[0] = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 40.0f, 70.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	ppTreeMesh[1] = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 30.0f, 60.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	ppTreeMesh[2] = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 35.0f, 65.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	ppTreeMesh[3] = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 25.0f, 55.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	ppTreeMesh[4] = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 45.0f, 75.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	int xObjects = 25;
-	int zObjects = 25;
-
+	int xObjects = 50;
+	int zObjects = 50;
 	m_nObjects = (xObjects * zObjects);
+
+	float fWidth = pTerrain->GetWidth() - 10.0f;
+	float fLength = pTerrain->GetLength() - 10.0f;
+
+	float fxPitch = fWidth / xObjects;
+	float fzPitch = fLength / zObjects;
+
+	float xPosition = 0.0f;
+	for (int x = 0; x < xObjects; x++)
+	{
+		xPosition += fxPitch;
+		float zPosition = 0.0f;
+
+		for (int z = 0; z < zObjects; z++)
+		{
+			zPosition += fzPitch;
+
+			float fPixelColor = pTerrain->GetColor(xPosition, zPosition);
+			if (fPixelColor  < 100.0f || fPixelColor > 200.0f)
+				m_nObjects--;
+		}
+	}
 
 	CTexture *pTextures;
 
@@ -808,7 +730,7 @@ void CTreeObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCo
 
 	CreateSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 5);
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 7, true);
+	CreateShaderResourceViews(pd3dDevice, pd3dCommandList, pTextures, 6, true);
 
 	m_pMaterial = new CMaterial();
 	m_pMaterial->SetTexture(pTextures);
@@ -817,30 +739,28 @@ void CTreeObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCo
 
 	CGameObject *pBillboardObject = NULL;
 
-	float fxPitch = 1028.0f / xObjects;
-	float fzPitch = 1028.0f / zObjects;
-
-	float xPosition = 10.0f;
+	xPosition = 0.0f;
 	for (int i = 0, x = 0; x < xObjects; x++)
 	{
-		xPosition = x * fxPitch;
-		float zPosition = 10.0f;
+		xPosition += fxPitch;
+		float zPosition = 0.0f;
+
 		for (int z = 0; z < zObjects; z++)
 		{
+			zPosition += fzPitch;
+			float fPixelColor = pTerrain->GetColor(xPosition, zPosition);
+			if (fPixelColor < 100.0f || fPixelColor > 200.0f) continue;
+
 			pBillboardObject = new CGameObject();
-			pBillboardObject->SetMesh(0, pTreeMesh);
+			pBillboardObject->SetMesh(0, ppTreeMesh[rand()%5]);
 
-			zPosition = z * fzPitch;
-			float fHeight = pTerrain->GetHeight(xPosition, zPosition) + 22.0f;
+			float fHeight = pTerrain->GetHeight(xPosition, zPosition) + 30.0f;
 
-			if (xPosition > 850.0f && xPosition < 970.0f && zPosition > 40.0f && zPosition < 140.0f)
-			{
-				pBillboardObject->SetPosition(0.0f, 100000.0f, 40.0f);
-			}
-			else
-				pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
+			if (xPosition > fWidth) xPosition = fWidth;
+			if (zPosition > fLength) zPosition = fLength;
 
-			pBillboardObject->m_nTexture = rand() % 4;
+			pBillboardObject->SetPosition(xPosition, fHeight, zPosition);
+			pBillboardObject->m_nTexture = rand() % 5;
 			m_ppObjects[i++] = pBillboardObject;
 		}
 	}
@@ -859,13 +779,14 @@ CTerrainShader::~CTerrainShader()
 
 D3D12_INPUT_LAYOUT_DESC CTerrainShader::CreateInputLayout()
 {
-	UINT nInputElementDescs = 4;
+	UINT nInputElementDescs = 5;
 	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
 
 	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	pd3dInputElementDescs[1] = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	pd3dInputElementDescs[2] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	pd3dInputElementDescs[3] = { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[4] = { "TEXTURENUM", 0, DXGI_FORMAT_R8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 
 	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
 	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;

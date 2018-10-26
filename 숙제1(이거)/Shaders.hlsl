@@ -94,7 +94,7 @@ float4 PSPlayer(VS_DIFFUSED_OUTPUT input) : SV_TARGET
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-Texture2D gtxtTexture : register(t3);
+Texture2D gtxtTexture : register(t4);
 
 SamplerState gWrapSamplerState : register(s0);
 SamplerState gClampSamplerState : register(s1);
@@ -154,8 +154,7 @@ float4 PSSkyBox(VS_TEXTURED_OUTPUT input) : SV_TARGET
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-Texture2D gtxtTerrainBaseTexture : register(t1);
-Texture2D gtxtTerrainDetailTexture : register(t2);
+Texture2D gtxtTerrainTextureArray[3] : register(t1);
 
 struct VS_TERRAIN_INPUT
 {
@@ -163,6 +162,7 @@ struct VS_TERRAIN_INPUT
 	float4 color : COLOR;
 	float2 uv0 : TEXCOORD0;
 	float2 uv1 : TEXCOORD1;
+	uint   ntex : TEXTURENUM;
 };
 
 struct VS_TERRAIN_OUTPUT
@@ -171,6 +171,7 @@ struct VS_TERRAIN_OUTPUT
 	float4 color : COLOR;
 	float2 uv0 : TEXCOORD0;
 	float2 uv1 : TEXCOORD1;
+	uint   ntex : TEXTURENUM;
 };
 
 VS_TERRAIN_OUTPUT VSTerrain(VS_TERRAIN_INPUT input)
@@ -185,14 +186,15 @@ VS_TERRAIN_OUTPUT VSTerrain(VS_TERRAIN_INPUT input)
 	output.color = input.color;
 	output.uv0 = input.uv0;
 	output.uv1 = input.uv1;
+	output.ntex = input.ntex;
 
 	return(output);
 }
 
 float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 {
-	float4 cBaseTexColor = gtxtTerrainBaseTexture.Sample(gWrapSamplerState, input.uv0);
-	float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gWrapSamplerState, input.uv1);
+	float4 cBaseTexColor = gtxtTerrainTextureArray[0].Sample(gWrapSamplerState, input.uv0);
+	float4 cDetailTexColor = gtxtTerrainTextureArray[NonUniformResourceIndex(input.ntex)].Sample(gWrapSamplerState, input.uv1);
 	float4 cColor = input.color * saturate((cBaseTexColor * 1.0f) + (cDetailTexColor * 0.5f));
 
 	return(cColor);
@@ -207,7 +209,7 @@ struct INSTANCEDGAMEOBJECTINFO
 	int    m_nTexture;
 };
 
-Texture2D gtxtArrayTextures[5] : register(t4);
+Texture2D gtxtArrayTextures[5] : register(t5);
 StructuredBuffer<INSTANCEDGAMEOBJECTINFO> gGameObjectInfo : register(t0);
 
 uint nTexture;

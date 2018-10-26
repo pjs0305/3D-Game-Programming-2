@@ -141,8 +141,8 @@ public:
 	virtual ~CBillboardObjectsShader();
 
 	virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
-	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, 
-		CMesh* pMesh, wchar_t *pszTextFileName, UINT nType, void *pContext=NULL);
+	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList,
+		CMesh* pMesh, wchar_t *pszTextFileName, UINT nType, void *pContext = NULL) {}
 	virtual void ReleaseObjects();
 	virtual void AnimateObjects(float fTimeElapsed, CCamera* pCamera);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);
@@ -166,7 +166,7 @@ public:
 
 	void CreateSrvDescriptorHeaps(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int nShaderResourceViews);
 	
-	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList,	CMesh* pMesh, wchar_t *pszTextFileName, UINT nType, void *pContext = NULL);
+	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CMesh* pMesh, wchar_t *pszTextFileName, UINT nType, void *pContext = NULL) {}
 
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList *pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);

@@ -58,6 +58,7 @@ class CDiffused2TexturedVertex : public CDiffusedVertex
 public:
 	XMFLOAT2						m_xmf2TexCoord0;
 	XMFLOAT2						m_xmf2TexCoord1;
+	UINT							m_iTexture;
 
 public:
 	CDiffused2TexturedVertex() { m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); m_xmf4Diffuse = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f); m_xmf2TexCoord0 = m_xmf2TexCoord1 = XMFLOAT2(0.0f, 0.0f); }
@@ -83,6 +84,8 @@ public:
 
 	void ReleaseUploadBuffers();
 
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
+
 protected:
 	ID3D12Resource					*m_pd3dVertexBuffer = NULL;
 	ID3D12Resource					*m_pd3dVertexUploadBuffer = NULL;
@@ -102,6 +105,8 @@ protected:
 	UINT							m_nIndices = 0;
 	UINT							m_nStartIndex = 0;
 	int								m_nBaseVertex = 0;
+
+	BoundingOrientedBox				m_xmBoundingBox;
 
 public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);
@@ -170,6 +175,27 @@ public:
 	int GetHeightMapLength() { return(m_nLength); }
 };
 
+class CMapImage
+{
+private:
+	BYTE						*m_pMapPixels;
+
+	int							m_nWidth;
+	int							m_nLength;
+	XMFLOAT3					m_xmf3Scale;
+
+public:
+	CMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMFLOAT3 xmf3Scale);
+	~CMapImage(void);
+
+	float GetColor(float fx, float fz, bool bReverseQuad = false);
+	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
+
+	BYTE *GetMapPixels() { return(m_pMapPixels); }
+	int GetMapWidth() { return(m_nWidth); }
+	int GetMapLength() { return(m_nLength); }
+};
+
 class CHeightMapGridMesh : public CMesh
 {
 protected:
@@ -178,7 +204,7 @@ protected:
 	XMFLOAT3					m_xmf3Scale;
 
 public:
-	CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale = XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f), void *pContext = NULL);
+	CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale = XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f), void *pContext0 = NULL, void *pContext1 = NULL);
 	virtual ~CHeightMapGridMesh();
 
 	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
@@ -186,6 +212,7 @@ public:
 	int GetLength() { return(m_nLength); }
 
 	virtual float OnGetHeight(int x, int z, void *pContext);
+	virtual float OnGetPixelColor(int x, int z, void *pContext);
 	virtual XMFLOAT4 OnGetColor(int x, int z, void *pContext);
 };
 

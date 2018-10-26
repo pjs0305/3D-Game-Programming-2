@@ -405,7 +405,82 @@ float CHeightMapImage::GetHeight(float fx, float fz, bool bReverseQuad)
 	return(fHeight);
 }
 
-CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, XMFLOAT4 xmf4Color, void *pContext) : CMesh(pd3dDevice, pd3dCommandList)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+
+CMapImage::CMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMFLOAT3 xmf3Scale)
+{
+	m_nWidth = nWidth;
+	m_nLength = nLength;
+	m_xmf3Scale = xmf3Scale;
+
+	BYTE *pMapPixels = new BYTE[m_nWidth * m_nLength];
+
+	HANDLE hFile = ::CreateFile(pFileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_ATTRIBUTE_READONLY, NULL);
+	DWORD dwBytesRead;
+	::ReadFile(hFile, pMapPixels, (m_nWidth * m_nLength), &dwBytesRead, NULL);
+	::CloseHandle(hFile);
+
+	m_pMapPixels = new BYTE[m_nWidth * m_nLength];
+	for (int y = 0; y < m_nLength; y++)
+	{
+		for (int x = 0; x < m_nWidth; x++)
+		{
+			m_pMapPixels[x + ((m_nLength - 1 - y)*m_nWidth)] = pMapPixels[x + (y*m_nWidth)];
+		}
+	}
+
+	if (pMapPixels) delete[] pMapPixels;
+}
+
+CMapImage::~CMapImage()
+{
+	if (m_pMapPixels) delete[] m_pMapPixels;
+	m_pMapPixels = NULL;
+}
+
+float CMapImage::GetColor(float fx, float fz, bool bReverseQuad)
+{
+	fx = fx / m_xmf3Scale.x;
+	fz = fz / m_xmf3Scale.z;
+	if ((fx < 0.0f) || (fz < 0.0f) || (fx >= m_nWidth) || (fz >= m_nLength)) return(0.0f);
+
+	int x = (int)fx;
+	int z = (int)fz;
+	float fxPercent = fx - x;
+	float fzPercent = fz - z;
+
+	float fBottomLeft = (float)m_pMapPixels[x + (z*m_nWidth)];
+	float fBottomRight = (float)m_pMapPixels[(x + 1) + (z*m_nWidth)];
+	float fTopLeft = (float)m_pMapPixels[x + ((z + 1)*m_nWidth)];
+	float fTopRight = (float)m_pMapPixels[(x + 1) + ((z + 1)*m_nWidth)];
+#ifdef _WITH_APPROXIMATE_OPPOSITE_CORNER
+	if (bReverseQuad)
+	{
+		if (fzPercent >= fxPercent)
+			fBottomRight = fBottomLeft + (fTopRight - fTopLeft);
+		else
+			fTopLeft = fTopRight + (fBottomLeft - fBottomRight);
+	}
+	else
+	{
+		if (fzPercent < (1.0f - fxPercent))
+			fTopRight = fTopLeft + (fBottomRight - fBottomLeft);
+		else
+			fBottomLeft = fTopLeft + (fBottomRight - fTopRight);
+	}
+#endif
+	float fTopHeight = fTopLeft * (1 - fxPercent) + fTopRight * fxPercent;
+	float fBottomHeight = fBottomLeft * (1 - fxPercent) + fBottomRight * fxPercent;
+	float fHeight = fBottomHeight * (1 - fzPercent) + fTopHeight * fzPercent;
+
+	return(fHeight);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+
+CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, XMFLOAT4 xmf4Color, void *pContext0, void *pContext1) : CMesh(pd3dDevice, pd3dCommandList)
 {
 	m_nVertices = nWidth * nLength;
 //	m_nStride = sizeof(CTexturedVertex);
@@ -421,7 +496,9 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsC
 //	CTexturedVertex *pVertices = new CTexturedVertex[m_nVertices];
 	CDiffused2TexturedVertex *pVertices = new CDiffused2TexturedVertex[m_nVertices];
 
-	CHeightMapImage *pHeightMapImage = (CHeightMapImage *)pContext;
+	CHeightMapImage *pHeightMapImage = (CHeightMapImage *)pContext0;
+	CMapImage *pMapImage = (CMapImage *)pContext1;
+
 	int cxHeightMap = pHeightMapImage->GetHeightMapWidth();
 	int czHeightMap = pHeightMapImage->GetHeightMapLength();
 
@@ -430,11 +507,15 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsC
 	{
 		for (int x = xStart; x < (xStart + nWidth); x++, i++)
 		{
-			fHeight = OnGetHeight(x, z, pContext);
+			fHeight = OnGetHeight(x, z, pContext0);
+			float fColor = OnGetPixelColor(x, z, pContext1);
+
  			pVertices[i].m_xmf3Position = XMFLOAT3((x*m_xmf3Scale.x), fHeight, (z*m_xmf3Scale.z));
-			pVertices[i].m_xmf4Diffuse = Vector4::Add(OnGetColor(x, z, pContext), xmf4Color);
+			pVertices[i].m_xmf4Diffuse = Vector4::Add(OnGetColor(x, z, pContext0), xmf4Color);
 			pVertices[i].m_xmf2TexCoord0 = XMFLOAT2(float(x) / float(cxHeightMap - 1)		,	float(czHeightMap - 1 - z)	/ float(czHeightMap - 1));
 			pVertices[i].m_xmf2TexCoord1 = XMFLOAT2(float(x) / float(m_xmf3Scale.x*0.5f)	,	float(z)					/ float(m_xmf3Scale.z*0.5f));
+			pVertices[i].m_iTexture = (fColor > 100.0f) ? 1 : 2;
+
 			if (fHeight < fMinHeight) fMinHeight = fHeight;
 			if (fHeight > fMaxHeight) fMaxHeight = fHeight;
 		}
@@ -495,6 +576,17 @@ float CHeightMapGridMesh::OnGetHeight(int x, int z, void *pContext)
 	float fHeight = pHeightMapPixels[x + (z*nWidth)] * xmf3Scale.y;
 	return(fHeight);
 }
+
+float CHeightMapGridMesh::OnGetPixelColor(int x, int z, void *pContext)
+{
+	CMapImage *pMapImage = (CMapImage *)pContext;
+	BYTE *pMapPixels = pMapImage->GetMapPixels();
+	XMFLOAT3 xmf3Scale = pMapImage->GetScale();
+	int nWidth = pMapImage->GetMapWidth();
+	float fColor = pMapPixels[x + (z*nWidth)] * xmf3Scale.y;
+	return(fColor);
+}
+
 
 XMFLOAT4 CHeightMapGridMesh::OnGetColor(int x, int z, void *pContext)
 {
@@ -589,6 +681,8 @@ CTexturedRectMesh::CTexturedRectMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCom
 			pVertices[5] = CTexturedVertex(XMFLOAT3(-fx, +fy, fz), XMFLOAT2(1.0f, 0.0f));
 		}
 	}
+
+	m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(fx, fy, fz), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 
 	m_pd3dVertexBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
 
