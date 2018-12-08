@@ -1,4 +1,4 @@
-// Project03.cpp : ¿¿øÎ «¡∑Œ±◊∑•ø° ¥Î«— ¡¯¿‘¡°¿ª ¡§¿««’¥œ¥Ÿ.
+Ôªø// Project03.cpp : ÏùëÏö© ÌîÑÎ°úÍ∑∏Îû®Ïóê ÎåÄÌïú ÏßÑÏûÖÏ†êÏùÑ Ï†ïÏùòÌï©ÎãàÎã§.
 //
 
 #include "stdafx.h"
@@ -27,12 +27,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 	HACCEL hAccelTable;
 
 	::LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	::LoadString(hInstance, IDC_LABPROJECT087, szWindowClass, MAX_LOADSTRING);
+	::LoadString(hInstance, IDC_RROJECT03, szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
 
 	if (!InitInstance(hInstance, nCmdShow)) return(FALSE);
 
-	hAccelTable = ::LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LABPROJECT087));
+	hAccelTable = ::LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_RROJECT03));
 
 	while (1)
 	{
@@ -66,10 +66,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = hInstance;
-	wcex.hIcon = ::LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABPROJECT087));
+	wcex.hIcon = ::LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RROJECT03));
 	wcex.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = NULL;//MAKEINTRESOURCE(IDC_LABPROJECT087);
+	wcex.lpszMenuName = NULL;//MAKEINTRESOURCE(IDC_RROJECT03);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = ::LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -80,7 +80,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	ghAppInstance = hInstance;
 
-	RECT rc ={ 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
+	RECT rc = { 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
 	DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
 	AdjustWindowRect(&rc, dwStyle, FALSE);
 	HWND hMainWnd = CreateWindow(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance, NULL);

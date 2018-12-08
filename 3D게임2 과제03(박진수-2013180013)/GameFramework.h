@@ -18,12 +18,14 @@ public:
 
 	void CreateSwapChain();
 	void CreateDirect3DDevice();
-	void CreateRtvAndDsvDescriptorHeaps();
-	void CreateRenderTargetViews();
-	void CreateDepthStencilView();
 	void CreateCommandQueueAndList();
 
-	void OnResizeBackBuffers();
+	void CreateRtvAndDsvDescriptorHeaps();
+
+	void CreateRenderTargetViews();
+	void CreateDepthStencilView();
+
+	void ChangeSwapChainState();
 
     void BuildObjects();
     void ReleaseObjects();
@@ -84,7 +86,6 @@ private:
 
 	POINT						m_ptOldCursorPos;
 
-	_TCHAR						m_pszCaption[70];
-
+	_TCHAR						m_pszFrameRate[70];
 };
 

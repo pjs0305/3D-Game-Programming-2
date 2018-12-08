@@ -1,6 +1,0 @@
-현재 메쉬, 오브젝트, 쉐이더 이식 끝
-
-해야할 거 = 루트 시그너처, HLSL, 플레이어 생성 등등
-
-D3D12 ERROR: CGraphicsCommandList::SetGraphicsRootDescriptorTable: The currently set root signature declares parameter [0] with type CBV, so it is invalid to set a descriptor table here. [ EXECUTION ERROR #708: SET_DESCRIPTOR_TABLE_INVALID]
-예외 발생(0x00007FF8AE9EA1D6(nvwgf2umx.dll), Project03.exe): 0xC0000005: 0xFFFFFFFF00000000 위치를 읽는 동안 액세스 위반이 발생했습니다..

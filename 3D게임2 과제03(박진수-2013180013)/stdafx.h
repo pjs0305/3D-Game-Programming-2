@@ -12,11 +12,18 @@
 // C의 런타임 헤더 파일입니다.
 #include <stdlib.h>
 #include <malloc.h>
+#include <memory.h>
 #include <tchar.h>
 #include <math.h>
 
 #include <string>
+#include <wrl.h>
 #include <shellapi.h>
+
+#include <fstream>
+#include <vector>
+
+using namespace std;
 
 #include <d3d12.h>
 #include <dxgi1_4.h>
@@ -28,17 +35,16 @@
 
 #include <Mmsystem.h>
 
-#include <assert.h>
-#include <algorithm>
-#include <memory.h>
-#include <wrl.h>
-
-#include <vector>
+#ifdef _DEBUG
+#include <dxgidebug.h>
+#endif
 
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
 using Microsoft::WRL::ComPtr;
+
+//#define _WITH_SWAPCHAIN_FULLSCREEN_STATE
 
 #define FRAME_BUFFER_WIDTH		640
 #define FRAME_BUFFER_HEIGHT		480
@@ -51,40 +57,29 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-/*#pragma comment(lib, "DirectXTex.lib") */
+#pragma comment(lib, "dxguid.lib")
 
 // TODO: 프로그램에 필요한 추가 헤더는 여기에서 참조합니다.
 
-extern UINT	gnCbvSrvDescriptorIncrementSize;
+extern UINT gnCbvSrvDescriptorIncrementSize;
 
 extern ID3D12Resource *CreateBufferResource(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, void *pData, UINT nBytes, D3D12_HEAP_TYPE d3dHeapType = D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, ID3D12Resource **ppd3dUploadBuffer = NULL);
-extern ID3D12Resource *CreateTextureResourceFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, wchar_t *pszFileName, ID3D12Resource **ppd3dUploadBuffer, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+extern ID3D12Resource *CreateTextureResourceFromDDSFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, wchar_t *pszFileName, ID3D12Resource **ppd3dUploadBuffer, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+extern ID3D12Resource *CreateTextureResourceFromWICFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, wchar_t *pszFileName, ID3D12Resource **ppd3dUploadBuffer, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-#define RANDOM_COLOR	XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
+#define RANDOM_COLOR			XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
 
-#define EPSILON				1.0e-10f
-
-
-#define ROOTSIGNATUREINDEX_GAMEOBJECTINFO 0
-#define ROOTSIGNATUREINDEX_CAMERAINFO 1
-#define ROOTSIGNATUREINDEX_ROTATIONINFO 2
-#define ROOTSIGNATUREINDEX_TERRAINTEXTUREARRAY 3
-#define ROOTSIGNATUREINDEX_TEXTURE 4
-#define ROOTSIGNATUREINDEX_TEXTUREARRAY 5
+#define EPSILON					1.0e-10f
 
 inline bool IsZero(float fValue) { return((fabsf(fValue) < EPSILON)); }
 inline bool IsEqual(float fA, float fB) { return(::IsZero(fA - fB)); }
 inline float InverseSqrt(float fValue) { return 1.0f / sqrtf(fValue); }
 inline void Swap(float *pfS, float *pfT) { float fTemp = *pfS; *pfS = *pfT; *pfT = fTemp; }
 
+#define NUMOFMISSAIL 2000
+
 namespace Vector3
 {
-	inline bool IsZero(XMFLOAT3& xmf3Vector)
-	{
-		if (::IsZero(xmf3Vector.x) && ::IsZero(xmf3Vector.y) && ::IsZero(xmf3Vector.z)) return(true);
-		return(false);
-	}
-
 	inline XMFLOAT3 XMVectorToFloat3(XMVECTOR& xmvVector)
 	{
 		XMFLOAT3 xmf3Result;
