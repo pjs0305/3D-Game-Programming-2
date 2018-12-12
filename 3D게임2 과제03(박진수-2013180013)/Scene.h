@@ -51,7 +51,7 @@ public:
 	virtual void ReleaseShaderVariables();
 
 	void BuildDefaultLightsAndMaterials();
-	void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
+	void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, void *pContext);
 	void ReleaseObjects();
 
 	void CheckCollision();
@@ -77,8 +77,6 @@ public:
 
 	int									m_nShaders = 0;
 	CShader								**m_ppShaders = NULL;
-
-	CUserInterface						*m_pUserInterface = NULL;
 
 	CHeightMapTerrain					*m_pTerrain = NULL;
 	CSkyBox								*m_pSkyBox = NULL;

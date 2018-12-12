@@ -603,7 +603,7 @@ XMFLOAT3 RandomPositionInSphere(XMFLOAT3 xmf3Center, float fRadius, int nColumn,
 
 void CEnemyObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext)
 {
-	m_nObjects = 120;
+	m_nObjects = 2;
 	m_ppObjects = new CGameObject*[m_nObjects];
 
 	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 0, 17 + 2); //SuperCobra(17), Gunship(2)
@@ -611,54 +611,21 @@ void CEnemyObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsC
 	CGameObject *pSuperCobraModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/SuperCobra.bin", this);
 	CGameObject *pGunshipModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Gunship.bin", this);
 
-	int nColumnSpace = 5, nColumnSize = 30;
-	int nFirstPassColumnSize = (m_nObjects % nColumnSize) > 0 ? (nColumnSize - 1) : nColumnSize;
+	m_ppObjects[0] = new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+	m_ppObjects[0]->SetChild(pSuperCobraModel);
+	pSuperCobraModel->AddRef();
 
-	int nObjects = 0;
-	for (int h = 0; h < nFirstPassColumnSize; h++)
-	{
-		for (int i = 0; i < floor(float(m_nObjects) / float(nColumnSize)); i++)
-		{
-			if (nObjects % 2)
-			{
-				m_ppObjects[nObjects] = new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
-				m_ppObjects[nObjects]->SetChild(pSuperCobraModel);
-				pSuperCobraModel->AddRef();
-			}
-			else
-			{
-				m_ppObjects[nObjects] = new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
-				m_ppObjects[nObjects]->SetChild(pGunshipModel);
-				pGunshipModel->AddRef();
-			}
+	m_ppObjects[0]->SetPosition(150.0f, 70.0f, 180.0f);
+	m_ppObjects[0]->Rotate(0.0f, 90.0f, 0.0f);
+	m_ppObjects[0]->PrepareAnimate();
 
-			m_ppObjects[nObjects]->SetPosition(RandomPositionInSphere(XMFLOAT3(0.0f, 0.0f, 0.0f), Random(20.0f, 100.0f), h - int(floor(nColumnSize / 2.0f)), nColumnSpace));
-			m_ppObjects[nObjects]->Rotate(0.0f, 90.0f, 0.0f);
-			m_ppObjects[nObjects++]->PrepareAnimate();
-		}
-	}
+	m_ppObjects[1] = new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+	m_ppObjects[1]->SetChild(pGunshipModel);
+	pGunshipModel->AddRef();
 
-	if (nFirstPassColumnSize != nColumnSize)
-	{
-		for (int i = 0; i < m_nObjects - int(floor(float(m_nObjects) / float(nColumnSize)) * nFirstPassColumnSize); i++)
-		{
-			if (nObjects % 2)
-			{
-				m_ppObjects[nObjects] = new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
-				m_ppObjects[nObjects]->SetChild(pSuperCobraModel);
-				pSuperCobraModel->AddRef();
-			}
-			else
-			{
-				m_ppObjects[nObjects] = new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
-				m_ppObjects[nObjects]->SetChild(pGunshipModel);
-				pGunshipModel->AddRef();
-			}
-			m_ppObjects[nObjects]->SetPosition(RandomPositionInSphere(XMFLOAT3(0.0f, 0.0f, 0.0f), Random(20.0f, 100.0f), nColumnSize - int(floor(nColumnSize / 2.0f)), nColumnSpace));
-			m_ppObjects[nObjects]->Rotate(0.0f, 90.0f, 0.0f);
-			m_ppObjects[nObjects++]->PrepareAnimate();
-		}
-	}
+	m_ppObjects[1]->SetPosition(150.0f, 70.0f, 230.0f);
+	m_ppObjects[1]->Rotate(0.0f, 90.0f, 0.0f);
+	m_ppObjects[1]->PrepareAnimate();
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -691,58 +658,6 @@ void CEnemyObjectsShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCa
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
-CPlayerShader::CPlayerShader()
-{
-}
-
-CPlayerShader::~CPlayerShader()
-{
-}
-
-D3D12_INPUT_LAYOUT_DESC CPlayerShader::CreateInputLayout()
-{
-	UINT nInputElementDescs = 5;
-	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
-
-	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-	pd3dInputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-	pd3dInputElementDescs[2] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-	pd3dInputElementDescs[3] = { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-	pd3dInputElementDescs[4] = { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 4, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-
-	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
-	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
-	d3dInputLayoutDesc.NumElements = nInputElementDescs;
-
-	return(d3dInputLayoutDesc);
-}
-
-D3D12_SHADER_BYTECODE CPlayerShader::CreateVertexShader()
-{
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSStandard", "vs_5_1", &m_pd3dVertexShaderBlob));
-}
-
-D3D12_SHADER_BYTECODE CPlayerShader::CreatePixelShader()
-{
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSStandard", "ps_5_1", &m_pd3dPixelShaderBlob));
-}
-
-void CPlayerShader::CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature)
-{
-	m_nPipelineStates = 1;
-	m_ppd3dPipelineStates = new ID3D12PipelineState*[m_nPipelineStates];
-
-	CShader::CreateShader(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
-
-	if (m_pd3dVertexShaderBlob) m_pd3dVertexShaderBlob->Release();
-	if (m_pd3dPixelShaderBlob) m_pd3dPixelShaderBlob->Release();
-
-	if (m_d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] m_d3dPipelineStateDesc.InputLayout.pInputElementDescs;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-
 CEffectShader::CEffectShader()
 {
 }
@@ -750,6 +665,26 @@ CEffectShader::CEffectShader()
 CEffectShader::~CEffectShader()
 {
 }
+
+void CEffectShader::ReleaseUploadBuffers()
+{
+	for (int j = 0; j < m_nEffectObjects; j++) if (m_pEffectObjects[j]) m_pEffectObjects[j]->ReleaseUploadBuffers();
+
+	CObjectsShader::ReleaseUploadBuffers();
+}
+
+void CEffectShader::ReleaseObjects()
+{
+	if (m_pEffectObjects)
+	{
+		for (int i = 0; i < m_nEffectObjects; i++)
+			if (m_pEffectObjects[i]) m_pEffectObjects[i]->Release();
+		delete[] m_pEffectObjects;
+	}
+
+	CObjectsShader::ReleaseObjects();
+}
+
 
 D3D12_INPUT_LAYOUT_DESC CEffectShader::CreateInputLayout()
 {
@@ -834,40 +769,73 @@ void CEffectShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 	m_ppObjects = new CGameObject*[m_nObjects];
 	::ZeroMemory(m_ppObjects, sizeof(CGameObject*) * MAXNUMOBJECT);
 
-	m_nEffectObjects = 1;
+	m_nEffectObjects = 2;
 	m_pEffectObjects = new CGameObject*[m_nEffectObjects];
-	::ZeroMemory(m_pEffectObjects, sizeof(CGameObject*) * m_nEffectObjects);
 
-	CTexture *pTextures;
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 0, 2); // Æø¹ß ÀÌÆåÆ®
 
-	pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
-	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, L"Image/Fire2.dds", 0);
+	CTexture *pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
+	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, L"Image/Fire.dds", 0);
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 0, 1); // ºÒ²É ÀÌÆåÆ®
 	CreateShaderResourceViews(pd3dDevice, pTextures, 13, true);
 
 	CMaterial *pMaterial = new CMaterial(1);
 	pMaterial->SetTexture(pTextures);
 
-	CRectMesh *pMesh = new CRectMesh(pd3dDevice, pd3dCommandList, 10.0f, 10.0f);
+	CRectMesh *pMesh = new CRectMesh(pd3dDevice, pd3dCommandList, 20.0f, 20.0f);
 
 	m_pEffectObjects[0] = new CGameObject(1);
 
 	m_pEffectObjects[0]->SetMesh(pMesh);
 	m_pEffectObjects[0]->SetMaterial(0, pMaterial);
 	m_pEffectObjects[0]->AddRef();
+
+
+	pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
+	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, L"Image/Special.dds", 0);
+
+	CreateShaderResourceViews(pd3dDevice, pTextures, 13, true);
+
+	pMaterial = new CMaterial(1);
+	pMaterial->SetTexture(pTextures);
+
+	pMesh = new CRectMesh(pd3dDevice, pd3dCommandList, 10.0f, 10.0f);
+
+	m_pEffectObjects[1] = new CGameObject(1);
+
+	m_pEffectObjects[1]->SetMesh(pMesh);
+	m_pEffectObjects[1]->SetMaterial(0, pMaterial);
+	m_pEffectObjects[1]->AddRef();
 }
 
-void CEffectShader::AddObject(CEffectObject* pObject)
+void CEffectShader::AddObject(CGameObject* pObject, EFFECT_TYPE efType)
 {
-	pObject->SetChild(m_pEffectObjects[0]);
-	m_pEffectObjects[0]->AddRef();
+	CEffect *pEfObject = (CEffect*)pObject;
+	pEfObject->m_efType = efType;
+
+	switch (efType)
+	{
+	case EFFECT_TYPE_EXPLOSION:
+		pEfObject->SetMaxSprite(5, 3, 12);
+		pEfObject->SetChild(m_pEffectObjects[0]);
+		m_pEffectObjects[0]->AddRef();
+		break;
+	case EFFECT_TYPE_BOOSTER:
+		pEfObject->SetMaxSprite(5, 1, 5);
+		pEfObject->SetChild(m_pEffectObjects[1]);
+		m_pEffectObjects[1]->AddRef();
+		break;
+	default:
+		pEfObject->SetChild(m_pEffectObjects[0]);
+		m_pEffectObjects[0]->AddRef();
+		break;
+	}
 
 	for (int i = 0; i < m_nObjects; i++)
 	{
 		if (!m_ppObjects[i])
 		{
-			m_ppObjects[i] = pObject;
+			m_ppObjects[i] = pEfObject;
 			break;
 		}
 	}
@@ -882,13 +850,6 @@ void CEffectShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *
 		if (m_ppObjects[j])
 		{
 			m_ppObjects[j]->UpdateTransform(NULL);
-			TCHAR pstrDebug[256] = { 0 };
-			_stprintf_s(pstrDebug, 256, _T("Main : %f %f %f\n"), m_ppObjects[j]->m_xmf4x4World._41, m_ppObjects[j]->m_xmf4x4World._42, m_ppObjects[j]->m_xmf4x4World._43);
-			OutputDebugString(pstrDebug);
-			
-			_stprintf_s(pstrDebug, 256, _T("Child : %f %f %f\n"), m_ppObjects[j]->m_pChild->m_xmf4x4World._41, m_ppObjects[j]->m_pChild->m_xmf4x4World._42, m_ppObjects[j]->m_pChild->m_xmf4x4World._43);
-			OutputDebugString(pstrDebug);
-
 			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
@@ -896,6 +857,59 @@ void CEffectShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+
+CPlayerShader::CPlayerShader()
+{
+}
+
+CPlayerShader::~CPlayerShader()
+{
+}
+
+D3D12_INPUT_LAYOUT_DESC CPlayerShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 5;
+	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[2] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[3] = { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[4] = { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 4, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+
+	return(d3dInputLayoutDesc);
+}
+
+D3D12_SHADER_BYTECODE CPlayerShader::CreateVertexShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSStandard", "vs_5_1", &m_pd3dVertexShaderBlob));
+}
+
+D3D12_SHADER_BYTECODE CPlayerShader::CreatePixelShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSStandard", "ps_5_1", &m_pd3dPixelShaderBlob));
+}
+
+void CPlayerShader::CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature)
+{
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState*[m_nPipelineStates];
+
+	CShader::CreateShader(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+
+	if (m_pd3dVertexShaderBlob) m_pd3dVertexShaderBlob->Release();
+	if (m_pd3dPixelShaderBlob) m_pd3dPixelShaderBlob->Release();
+
+	if (m_d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] m_d3dPipelineStateDesc.InputLayout.pInputElementDescs;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
 CVerticesObjectsShader::CVerticesObjectsShader()
 {
 
@@ -1123,6 +1137,8 @@ void CFlowerObjectsShader::OnPrepareRender(ID3D12GraphicsCommandList *pd3dComman
 	UpdateShaderVariables(pd3dCommandList);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 
 CTreeObjectsShader::CTreeObjectsShader()
 {
@@ -1165,11 +1181,17 @@ CUserInterface::CUserInterface()
 
 CUserInterface::~CUserInterface()
 {
-	for (int i = 0; i < m_nUIRect; i++)
+	for (int i = 0; i < m_nUIRects; i++)
 	{
-		if (m_pUIRect[i])
-			delete m_pUIRect[i];
+		if (m_ppUIRects[i])
+			m_ppUIRects[i]->Release();
 	}
+	if (m_ppUIRects) delete[] m_ppUIRects;
+
+	for(int i = 0; i <m_nTextures; i++)
+		if (m_ppTextures[i]) m_ppTextures[i]->Release();
+
+	if (m_ppTextures) delete[] m_ppTextures;
 }
 
 D3D12_SHADER_BYTECODE CUserInterface::CreateVertexShader()
@@ -1265,18 +1287,25 @@ void CUserInterface::CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsComman
 
 	HRESULT hResult = pd3dDevice->CreateGraphicsPipelineState(&m_d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void **)&m_ppd3dPipelineStates[0]);
 
+	if (m_pd3dVertexShaderBlob) m_pd3dVertexShaderBlob->Release();
+	if (m_pd3dGeometryShaderBlob) m_pd3dGeometryShaderBlob->Release();
+	if (m_pd3dPixelShaderBlob) m_pd3dPixelShaderBlob->Release();
+
 	if (m_d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] m_d3dPipelineStateDesc.InputLayout.pInputElementDescs;
 }
 
 void CUserInterface::ReleaseUploadBuffers()
 {
-	if (m_pUIRect)
+	if (m_ppUIRects)
 	{
-		for (UINT i = 0; i < m_nUIRect; i++)
+		for (UINT i = 0; i < m_nUIRects; i++)
 		{
-			if (m_pUIRect[i]) m_pUIRect[i]->ReleaseUploadBuffers();
+			if (m_ppUIRects[i]) m_ppUIRects[i]->ReleaseUploadBuffers();
 		}
 	}
+
+	for (int i = 1; i < m_nTextures; i++)
+		if (m_ppTextures[i]) m_ppTextures[i]->ReleaseUploadBuffers();
 
 	CShader::ReleaseUploadBuffers();
 }
@@ -1295,32 +1324,41 @@ void CUserInterface::Initialize(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandL
 {
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
-	m_nMaterials = 1;
-	m_ppMaterials = new CMaterial*[m_nMaterials];
+	m_nTextures = 2;
+	m_ppTextures = new CTexture*[m_nTextures];
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 0, 2);
+	m_ppTextures[0] = (CTexture*)pContext;
 
 	CTexture* pTextures = new CTexture(1, RESOURCE_TEXTURE2D, 0);
 	pTextures->LoadTextureFromFile(pd3dDevice, pd3dCommandList, L"./Cockpit/cockpit_ui.dds", 0);
+	m_ppTextures[1] = pTextures;
 
-	m_ppMaterials[0] = new CMaterial(1);
-	m_ppMaterials[0]->SetTexture(pTextures);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, pd3dCommandList, 0, m_ppTextures[0]->GetTextures() + m_ppTextures[1]->GetTextures());
+	CreateShaderResourceViews(pd3dDevice, m_ppTextures[0], 13, false);
+	CreateShaderResourceViews(pd3dDevice, m_ppTextures[1], 13, false);
 
-	CreateShaderResourceViews(pd3dDevice, pTextures, 13, false);
-
-	m_nUIRect = 1;
-	m_pUIRect = new CUIRect*[m_nUIRect];
+	m_nUIRects = 2;
+	m_ppUIRects = new CUIRect*[m_nUIRects];
 
 	// Base UI
 	XMFLOAT2 xmf2Center = CalculateCenter(-1.0f, 1.0f, 1.0f, -1.0f);
 	XMFLOAT2 xmf2Size = CalculateSize(-1.0f, 1.0f, 1.0f, -1.0f);
-	m_pUIRect[0] = new CUIRect(pd3dDevice, pd3dCommandList, xmf2Center, xmf2Size);
+	m_ppUIRects[1] = new CUIRect(pd3dDevice, pd3dCommandList, xmf2Center, xmf2Size);
+
+	// BackMirror
+	xmf2Center = CalculateCenter(-0.25f, 0.35f, -0.3f, -0.6f);
+	xmf2Size = CalculateSize(-0.25f, 0.35f, -0.3f, -0.6f);
+	m_ppUIRects[0] = new CUIRect(pd3dDevice, pd3dCommandList, xmf2Center, xmf2Size);
 }
 
 void CUserInterface::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState)
 {
 	OnPrepareRender(pd3dCommandList, nPipelineState);
 
-	if (m_ppMaterials[0]) m_ppMaterials[0]->UpdateShaderVariable(pd3dCommandList); // Base UI
-	m_pUIRect[0]->Render(pd3dCommandList);
+	if (m_ppTextures[0]) m_ppTextures[0]->UpdateShaderVariables(pd3dCommandList); // BackMirror
+	m_ppUIRects[0]->Render(pd3dCommandList);
+
+	if (m_ppTextures[1]) m_ppTextures[1]->UpdateShaderVariables(pd3dCommandList); // Base UI
+	m_ppUIRects[1]->Render(pd3dCommandList);
+
 }

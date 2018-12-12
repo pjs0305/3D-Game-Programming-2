@@ -32,6 +32,7 @@ protected:
 	LPVOID						m_pCameraUpdatedContext;
 
 	CCamera						*m_pCamera = NULL;
+	CCamera						*m_pBackMirrorCamera = NULL;
 
 	CShader						*m_pShader = NULL;
 
@@ -57,6 +58,7 @@ public:
 	float GetRoll() const { return(m_fRoll); }
 
 	CCamera *GetCamera() { return(m_pCamera); }
+	CCamera *GetBackMirrorCamera() { return(m_pBackMirrorCamera); }
 	void SetCamera(CCamera *pCamera) { m_pCamera = pCamera; }
 
 	void Move(ULONG nDirection, float fDistance, bool bVelocity = false);
@@ -84,18 +86,19 @@ public:
 };
 
 class CEffectShader;
+class CUserInterface;
 
 class CAirplanePlayer : public CPlayer
 {
 public:
-	CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
+	CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext);
 	virtual ~CAirplanePlayer();
 
 	CGameObject					*m_pMainRotorFrame = NULL;
 	CGameObject					*m_pTailRotorFrame = NULL;
 	CGameObject					*m_pHellfireMissileFrame = NULL;
 
-	CGameObject					*m_pMissailObjects[NUMOFMISSAIL] = { 0 };
+	CGameObject					*m_pMissileObjects[NUMOFMissile] = { 0 };
 	CEffectShader				*m_pEffectShader = NULL;
 
 #define SHOTCOOLTIME 1.0f
@@ -103,8 +106,11 @@ public:
 	bool						m_bShotable = true;
 
 private:
+	virtual void ReleaseUploadBuffers();
+
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
+
 
 public:
 	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
@@ -112,6 +118,9 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 
 	void Shot();
+
+public:
+	CUserInterface						*m_pUserInterface = NULL;
 };
 
 

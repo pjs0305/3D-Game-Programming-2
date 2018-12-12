@@ -93,6 +93,12 @@ void CTexture::LoadTextureFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsComma
 		m_ppd3dTextures[nIndex] = ::CreateTextureResourceFromWICFile(pd3dDevice, pd3dCommandList, pszFileName, &(m_ppd3dTextureUploadBuffers[nIndex]), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
+ID3D12Resource *CTexture::CreateTexture(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, UINT nWidth, UINT nHeight, DXGI_FORMAT dxgiFormat, D3D12_RESOURCE_FLAGS d3dResourceFlags, D3D12_RESOURCE_STATES d3dResourceStates, D3D12_CLEAR_VALUE *pd3dClearValue, UINT nIndex)
+{
+	m_ppd3dTextures[nIndex] = ::CreateTexture2DResource(pd3dDevice, pd3dCommandList, nWidth, nHeight, dxgiFormat, d3dResourceFlags, d3dResourceStates, pd3dClearValue);
+	return(m_ppd3dTextures[nIndex]);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 CMaterial::CMaterial(int nTextures)
@@ -282,7 +288,6 @@ void CGameObject::SetMesh(CMesh *pMesh)
 	if (m_pMesh) m_pMesh->Release();
 	m_pMesh = pMesh;
 	if (m_pMesh) m_pMesh->AddRef();
-	//m_xmAABB = m_pMesh->m_xmAABB;
 }
 
 void CGameObject::SetShader(CShader *pShader)
@@ -309,9 +314,6 @@ void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera
 {
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
 	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
-
-	//if (m_pMesh)
-	//	m_pMesh->m_xmAABB.Transform(m_xmAABB, XMLoadFloat4x4(&m_xmf4x4World));
 }
 
 CGameObject *CGameObject::FindFrame(char *pstrFrameName)
@@ -507,6 +509,40 @@ void CGameObject::Rotate(XMFLOAT4 *pxmf4Quaternion)
 	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
 
 	UpdateTransform(NULL);
+}
+
+void CGameObject::UpdateAABB()
+{
+	if (m_pMesh) m_pMesh->m_xmAABB.Transform(m_xmAABB, XMLoadFloat4x4(&m_xmf4x4World));
+
+	if (m_pSibling) m_pSibling->UpdateAABB();
+	if (m_pChild) m_pChild->UpdateAABB();
+}
+
+bool CGameObject::CollisionObject(CGameObject *pObject)
+{
+	if (m_pMesh)
+	{
+		if (pObject->CollisionBoundingBox(&m_xmAABB)) return true;
+	}
+
+	if (m_pSibling) return m_pSibling->CollisionObject(pObject);
+	if (m_pChild) return m_pChild->CollisionObject(pObject);
+
+	return false;
+}
+
+bool CGameObject::CollisionBoundingBox(BoundingBox *pxmAABB)
+{
+	if (m_pMesh)
+	{
+		if (m_xmAABB.Intersects(*pxmAABB)) return true;
+	}
+
+	if (m_pSibling) return m_pSibling->CollisionBoundingBox(pxmAABB);
+	if (m_pChild) return m_pChild->CollisionBoundingBox(pxmAABB);
+
+	return false;
 }
 
 //#define _WITH_DEBUG_FRAME_HIERARCHY
@@ -940,28 +976,33 @@ void CMi24Object::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////
 
-CMissailObject::CMissailObject()
+CMissileObject::CMissileObject()
 {
 
 }
 
-CMissailObject::~CMissailObject()
+CMissileObject::~CMissileObject()
 {
 
 }
 
-void CMissailObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera *pCamera)
+void CMissileObject::Delete() 
+{ 
+	m_Delete = TRUE; 
+	m_MyEffect->Delete(); 
+}
+
+void CMissileObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera *pCamera)
 {
 	if (m_fElapsedTime > m_fAliveTime)
 	{
-		m_Delete = TRUE;
-		m_MyEffect->Delete();
+		Delete();
 	}
 	else
 		m_fElapsedTime += fTimeElapsed;
 
 	Rotate(0.0f, 0.0f, m_fRotationSpeed * fTimeElapsed);
-	//MoveForward(m_fMovingSpeed * fTimeElapsed);
+	MoveForward(m_fMovingSpeed * fTimeElapsed);
 
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 }
@@ -969,40 +1010,76 @@ void CMissailObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCam
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////
 
-CEffectObject::CEffectObject()
+CEffect::CEffect()
 {
 	m_nMaxSpriteX = m_nMaxSpriteY = m_nSpritePosX = m_nSpritePosY = 0;
 }
 
-CEffectObject::~CEffectObject()
+CEffect::~CEffect()
 {
 
 }
 
-void CEffectObject::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, XMFLOAT4X4 *pxmf4x4World)
+void CEffect::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, XMFLOAT4X4 *pxmf4x4World)
 {
 	SetSpritePos(m_nSpritePosX, m_nSpritePosY);
 
-	pd3dCommandList->SetGraphicsRoot32BitConstants(14, 4, &m_xmf3x3Sprite, 0);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(14, 4, &m_xmf4Sprite, 0);
 
 	CGameObject::UpdateShaderVariable(pd3dCommandList, pxmf4x4World);
 }
 
-void CEffectObject::SpriteAnimate()
+void CEffect::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera *pCamera)
 {
-	m_nSpritePosX++;
-	if (m_nSpritePosX == m_nMaxSpriteX)
-	{
-		m_nSpritePosX = 0;
-		m_nSpritePosY++;
-	}
-	if (m_nSpritePosY == m_nMaxSpriteY)
-		m_nSpritePosY = 0;
+	SpriteAnimate();
 
-	if (m_nSpritePosX + m_nSpritePosY * 2 == m_nMaxSprite) m_nSpritePosX = m_nSpritePosY = 0;
+	SetLookAt(pCamera->GetPosition(), XMFLOAT3(0.0f, 1.0f, 0.0f));
+
+	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent, pCamera);
 }
 
-void CEffectObject::Follow()
+void CEffect::SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up)
+{
+	XMFLOAT3 xmf3Position(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43);
+
+	XMFLOAT3 xmf3Look = Vector3::Normalize(Vector3::Subtract(xmf3Target, xmf3Position));
+	XMFLOAT3 xmf3Right = Vector3::CrossProduct(xmf3Up, xmf3Look, true);
+
+	m_xmf4x4Transform._11 = xmf3Right.x; m_xmf4x4Transform._12 = xmf3Right.y; m_xmf4x4Transform._13 = xmf3Right.z;
+	m_xmf4x4Transform._21 = xmf3Up.x; m_xmf4x4Transform._22 = xmf3Up.y; m_xmf4x4Transform._23 = xmf3Up.z;
+	m_xmf4x4Transform._31 = xmf3Look.x; m_xmf4x4Transform._32 = xmf3Look.y; m_xmf4x4Transform._33 = xmf3Look.z;
+}
+
+void CEffect::SpriteAnimate()
+{
+	if (m_nSpritePosX + m_nSpritePosY * m_nMaxSpriteX == m_nMaxSprite && m_efType == EFFECT_TYPE_EXPLOSION)
+		Delete();
+	else
+	{
+		m_nSpritePosX++;
+		if (m_nSpritePosX == m_nMaxSpriteX)
+		{
+			m_nSpritePosX = 0;
+			m_nSpritePosY++;
+		}
+		if (m_nSpritePosY == m_nMaxSpriteY)
+			m_nSpritePosY = 0;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////
+
+CObjectEffect::CObjectEffect() : CEffect()
+{
+}
+
+CObjectEffect::~CObjectEffect()
+{
+
+}
+
+void CObjectEffect::Follow()
 {
 	if (m_xmf4x4Parent)
 	{
@@ -1022,28 +1099,11 @@ void CEffectObject::Follow()
 
 		m_xmf4x4Transform._41 = xmf3Position.x; m_xmf4x4Transform._42 = xmf3Position.y; m_xmf4x4Transform._43 = xmf3Position.z;
 	}
-
 }
 
-void CEffectObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera *pCamera)
+void CObjectEffect::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent, CCamera *pCamera)
 {
-	SpriteAnimate();
-
 	Follow();
 
-	SetLookAt(pCamera->GetPosition(), XMFLOAT3(0.0f, 1.0f, 0.0f));
-
-	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
-}
-
-void CEffectObject::SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up)
-{
-	XMFLOAT3 xmf3Position(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43);
-
-	XMFLOAT3 xmf3Look = Vector3::Normalize(Vector3::Subtract(xmf3Target, xmf3Position));
-	XMFLOAT3 xmf3Right = Vector3::CrossProduct(xmf3Up, xmf3Look, true);
-
-	m_xmf4x4World._11 = xmf3Right.x; m_xmf4x4World._12 = xmf3Right.y; m_xmf4x4World._13 = xmf3Right.z;
-	m_xmf4x4World._21 = xmf3Up.x; m_xmf4x4World._22 = xmf3Up.y; m_xmf4x4World._23 = xmf3Up.z;
-	m_xmf4x4World._31 = xmf3Look.x; m_xmf4x4World._32 = xmf3Look.y; m_xmf4x4World._33 = xmf3Look.z;
+	CEffect::Animate(fTimeElapsed, pxmf4x4Parent, pCamera);
 }

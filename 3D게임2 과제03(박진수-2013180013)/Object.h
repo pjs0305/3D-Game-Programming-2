@@ -64,6 +64,7 @@ public:
 	void ReleaseShaderVariables();
 
 	void LoadTextureFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, wchar_t *pszFileName, UINT nIndex, bool bIsDDSFile=true);
+	ID3D12Resource *CreateTexture(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, UINT nWidth, UINT nHeight, DXGI_FORMAT dxgiFormat, D3D12_RESOURCE_FLAGS d3dResourceFlags, D3D12_RESOURCE_STATES d3dResourceStates, D3D12_CLEAR_VALUE *pd3dClearValue, UINT nIndex);
 
 	int GetTextures() { return(m_nTextures); }
 	ID3D12Resource *GetTexture(int nIndex) { return(m_ppd3dTextures[nIndex]); }
@@ -215,9 +216,12 @@ public:
 	UINT GetMeshType() { return((m_pMesh) ? m_pMesh->GetType() : 0x00); }
 
 	BOOL IsDelete() { return m_Delete; }
-	void Delete() { m_Delete = TRUE; }
+	virtual void Delete() { m_Delete = TRUE; }
 
-	//BoundingBox m_xmAABB;
+	BoundingBox m_xmAABB;
+	void UpdateAABB();
+	bool CollisionObject(CGameObject *pObject);
+	bool CollisionBoundingBox(BoundingBox *pxmAABB);
 
 protected:
 	BOOL m_Delete = FALSE;
@@ -280,17 +284,22 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
 };
 
-class CEffectObject;
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 
-class CMissailObject : public CGameObject
+class CObjectEffect;
+
+class CMissileObject : public CGameObject
 {
 public:
-	CMissailObject();
-	virtual ~CMissailObject();
+	CMissileObject();
+	virtual ~CMissileObject();
 
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
+	virtual void Delete();
 
-	CEffectObject *m_MyEffect = NULL;
+	CObjectEffect *m_MyEffect = NULL;
+
 
 private:
 	float m_fRotationSpeed = 720.0f;
@@ -300,30 +309,25 @@ private:
 	float m_fElapsedTime = 0.0f;
 };
 
-class CEffectObject : public CGameObject
+class CEffect : public CGameObject
 {
 public:
-	CEffectObject();
-	virtual ~CEffectObject();
+	CEffect();
+	virtual ~CEffect();
 
 	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, XMFLOAT4X4 *pxmf4x4World);
 
-	void SpriteAnimate();
-	void Follow();
-	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
-
 	void SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up = XMFLOAT3(0.0f, 1.0f, 0.0f));
-	void SetOffset(XMFLOAT3 xmf3Offset) { m_xmf3Offset = xmf3Offset; }
-	void SetParent(XMFLOAT4X4 *pxmf4x4Parent) { m_xmf4x4Parent = pxmf4x4Parent; }
+	void SpriteAnimate();
 
-	void SetMaxSprite(int x, int y, int Max) { m_nMaxSpriteX = x; m_nMaxSpriteY = y; m_nMaxSprite = Max; m_xmf3x3Sprite.x = (float)1 / x; m_xmf3x3Sprite.y = (float)1 / y; }
-	void SetSpritePos(int x, int y) { m_xmf3x3Sprite.z = (float)x; m_xmf3x3Sprite.w = (float)y; }
+	void SetMaxSprite(int x, int y, int Max) { m_nMaxSpriteX = x; m_nMaxSpriteY = y; m_nMaxSprite = Max; m_xmf4Sprite.x = (float)1 / x; m_xmf4Sprite.y = (float)1 / y; }
+	void SetSpritePos(int x, int y) { m_xmf4Sprite.z = (float)x; m_xmf4Sprite.w = (float)y; }
+
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
+	EFFECT_TYPE m_efType;
 
 private:
-	XMFLOAT3	m_xmf3Offset;
-	XMFLOAT4X4	*m_xmf4x4Parent = NULL;
-
-	XMFLOAT4	m_xmf3x3Sprite;
+	XMFLOAT4	m_xmf4Sprite;
 
 	int			m_nSpritePosX;
 	int			m_nSpritePosY;
@@ -332,8 +336,29 @@ private:
 	int			m_nMaxSpriteY;
 	int			m_nMaxSprite;
 };
+
+class CObjectEffect : public CEffect
+{
+public:
+	CObjectEffect();
+	virtual ~CObjectEffect();
+
+	void SetOffset(XMFLOAT3 xmf3Offset) { m_xmf3Offset = xmf3Offset; }
+	void SetParent(XMFLOAT4X4 *pxmf4x4Parent) { m_xmf4x4Parent = pxmf4x4Parent; }
+
+	void Follow();
+
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL, CCamera *pCamera = NULL);
+
+
+private:
+	XMFLOAT3	m_xmf3Offset;
+	XMFLOAT4X4	*m_xmf4x4Parent = NULL;
+};
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+
 class CSkyBox : public CGameObject
 {
 public:

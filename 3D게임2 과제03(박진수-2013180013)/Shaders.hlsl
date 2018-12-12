@@ -448,7 +448,7 @@ float4 PSTextured(VS_TEXTURED_OUTPUT input, uint primitiveID : SV_PrimitiveID) :
 
 cbuffer cbTextureSprite : register(b3)
 {
-	float4	gf3x3TextureSpriteInfo : packoffset(c0);
+	float4	gfTextureSpriteInfo : packoffset(c0);
 };
 
 VS_TEXTURED_OUTPUT VSEffect(VS_TEXTURED_INPUT input)
@@ -457,8 +457,8 @@ VS_TEXTURED_OUTPUT VSEffect(VS_TEXTURED_INPUT input)
 
 	output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxGameObject), gmtxView), gmtxProjection);
 
-	float3x3 f3x3Sprite = float3x3(gf3x3TextureSpriteInfo.x, 0.0f, 0.0f, 0.0f, gf3x3TextureSpriteInfo.y, 0.0f, input.uv.x * gf3x3TextureSpriteInfo.x, input.uv.y * gf3x3TextureSpriteInfo.y, 1.0f);
-	float3 f3Sprite = float3(gf3x3TextureSpriteInfo.zw, 1.0f);
+	float3x3 f3x3Sprite = float3x3(gfTextureSpriteInfo.x, 0.0f, 0.0f, 0.0f, gfTextureSpriteInfo.y, 0.0f, input.uv.x * gfTextureSpriteInfo.x, input.uv.y * gfTextureSpriteInfo.y, 1.0f);
+	float3 f3Sprite = float3(gfTextureSpriteInfo.zw, 1.0f);
 	output.uv = (float2)mul(f3Sprite, f3x3Sprite);
 
 	return(output);
@@ -466,8 +466,6 @@ VS_TEXTURED_OUTPUT VSEffect(VS_TEXTURED_INPUT input)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-Texture2D gtxtUI : register(t15);
-
 struct VS_UI_INPUT
 {
 	float2 center : POSITION;

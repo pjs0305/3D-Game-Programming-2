@@ -165,23 +165,6 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState = 0);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-class CPlayerShader : public CShader
-{
-public:
-	CPlayerShader();
-	virtual ~CPlayerShader();
-
-	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
-
-	virtual D3D12_SHADER_BYTECODE CreateVertexShader();
-	virtual D3D12_SHADER_BYTECODE CreatePixelShader();
-
-	virtual void CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
-};
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
@@ -202,15 +185,33 @@ public:
 
 #define MAXNUMOBJECT 100
 	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext = NULL);
+	virtual void ReleaseObjects();
+	virtual void ReleaseUploadBuffers();
 
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState);
 
-	void AddObject(CEffectObject* pObject);
+	void AddObject(CGameObject* pObject, EFFECT_TYPE efType);
 
 protected:
 	CGameObject **m_pEffectObjects = NULL;
 	int			m_nEffectObjects;
+};
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+class CPlayerShader : public CShader
+{
+public:
+	CPlayerShader();
+	virtual ~CPlayerShader();
+
+	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
+
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader();
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader();
+
+	virtual void CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -318,10 +319,10 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState = 0);
 
 protected:
-	UINT		m_nUIRect = 0;
-	CUIRect		**m_pUIRect = NULL;
+	UINT		m_nUIRects = 0;
+	CUIRect		**m_ppUIRects = NULL;
 
-	int			m_nMaterials;
-	CMaterial **m_ppMaterials = NULL;
+	int			m_nTextures;
+	CTexture	**m_ppTextures = NULL;
 
 };

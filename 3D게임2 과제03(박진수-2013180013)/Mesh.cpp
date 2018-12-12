@@ -936,6 +936,7 @@ CUIRect::~CUIRect()
 {
 	if (m_pd3dSizeBuffer) m_pd3dSizeBuffer->Release();
 
+	if (m_pxmf2Positions) delete[] m_pxmf2Positions;
 	if (m_pxmf2Sizes) delete[] m_pxmf2Sizes;
 }
 
@@ -943,6 +944,8 @@ void CUIRect::ReleaseUploadBuffers()
 {
 	if (m_pd3dSizeUploadBuffer) m_pd3dSizeUploadBuffer->Release();
 	m_pd3dSizeUploadBuffer = NULL;
+
+	CMesh::ReleaseUploadBuffers();
 }
 
 void CUIRect::Render(ID3D12GraphicsCommandList *pd3dCommandList, UINT nInstances)

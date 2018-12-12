@@ -62,7 +62,7 @@ void CScene::BuildDefaultLightsAndMaterials()
 	m_pLights[3].m_fTheta = (float)cos(XMConvertToRadians(30.0f));
 }
 
-void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
+void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, void *pContext)
 {
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
@@ -106,10 +106,6 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 	m_ppShaders[3] = pEffectShader;
 
-	m_pUserInterface = new CUserInterface();
-	m_pUserInterface->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
-	m_pUserInterface->Initialize(pd3dDevice, pd3dCommandList, NULL);
-
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
@@ -128,7 +124,6 @@ void CScene::ReleaseObjects()
 		delete[] m_ppShaders;
 	}
 
-	if (m_pUserInterface) delete m_pUserInterface;
 	if (m_pTerrain) delete m_pTerrain;
 	if (m_pSkyBox) delete m_pSkyBox;
 
@@ -141,29 +136,6 @@ void CScene::ReleaseObjects()
 	ReleaseShaderVariables();
 
 	if (m_pLights) delete[] m_pLights;
-}
-
-void CScene::CheckCollision()
-{
-	CGameObject** Enemy = ((CObjectsShader*)m_ppShaders[2])->m_ppObjects;
-	CGameObject** Missail = ((CAirplanePlayer*)m_pPlayer)->m_pMissailObjects;
-
-	for (int i = 0; i < ((CObjectsShader*)m_ppShaders[2])->m_nObjects; i++)
-	{
-		if (Enemy[i])
-		{
-			for (int j = 0; j < NUMOFMISSAIL; j++)
-			{
-				if (Missail[j])
-				{
-//					if (Enemy[i]->m_xmAABB.Intersects(Missail[j]->m_xmAABB))
-					{
-//						exit(0);
-					}
-				}
-			}
-		}
-	}
 }
 
 ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevice)
@@ -231,12 +203,6 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dDescriptorRanges[9].BaseShaderRegister = 1; //t1: gtxtTexture Array[5]
 	pd3dDescriptorRanges[9].RegisterSpace = 0;
 	pd3dDescriptorRanges[9].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//pd3dDescriptorRanges[10].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	//pd3dDescriptorRanges[10].NumDescriptors = 1;
-	//pd3dDescriptorRanges[10].BaseShaderRegister = 15; //t15: gtxtUI
-	//pd3dDescriptorRanges[10].RegisterSpace = 0;
-	//pd3dDescriptorRanges[10].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 	D3D12_ROOT_PARAMETER pd3dRootParameters[15];
 
@@ -317,11 +283,6 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dRootParameters[14].Constants.RegisterSpace = 0;
 	pd3dRootParameters[14].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	//pd3dRootParameters[15].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	//pd3dRootParameters[15].DescriptorTable.NumDescriptorRanges = 1;
-	//pd3dRootParameters[15].DescriptorTable.pDescriptorRanges = &pd3dDescriptorRanges[10]; // t15: gtxtTexture
-	//pd3dRootParameters[15].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
 	D3D12_STATIC_SAMPLER_DESC pd3dSamplerDescs[2];
 
 	pd3dSamplerDescs[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -395,8 +356,6 @@ void CScene::ReleaseShaderVariables()
 
 void CScene::ReleaseUploadBuffers()
 {
-	if (m_pUserInterface) m_pUserInterface->ReleaseUploadBuffers();
-
 	if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
 	if (m_pSkyBox) m_pSkyBox->ReleaseUploadBuffers();
 
@@ -411,33 +370,47 @@ bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam,
 
 bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	switch (nMessageID)
-	{
-	case WM_KEYDOWN:
-		switch (wParam)
-		{
-		case VK_SPACE:
-			((CAirplanePlayer*)m_pPlayer)->Shot();
-			break;
-		//case 'W': m_ppGameObjects[0]->MoveForward(+1.0f); break;
-		//case 'S': m_ppGameObjects[0]->MoveForward(-1.0f); break;
-		//case 'A': m_ppGameObjects[0]->MoveStrafe(-1.0f); break;
-		//case 'D': m_ppGameObjects[0]->MoveStrafe(+1.0f); break;
-		//case 'Q': m_ppGameObjects[0]->MoveUp(+1.0f); break;
-		//case 'R': m_ppGameObjects[0]->MoveUp(-1.0f); break;
-		default:
-			break;
-		}
-		break;
-	default:
-		break;
-	}
 	return(false);
 }
 
 bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 {
 	return(false);
+}
+
+void CScene::CheckCollision()
+{
+	CGameObject** Enemy = ((CObjectsShader*)m_ppShaders[2])->m_ppObjects;
+	CGameObject** Missile = ((CAirplanePlayer*)m_pPlayer)->m_pMissileObjects;
+	CEffectShader* pEffectShader = (CEffectShader*)m_ppShaders[3];
+
+	for (int j = 0; j < NUMOFMissile; j++)
+	{
+		if (Missile[j])
+		{
+			for (int i = 0; i < ((CObjectsShader*)m_ppShaders[2])->m_nObjects; i++)
+			{
+				if (Enemy[i])
+				{
+					if (!Missile[j]->IsDelete())
+					{
+						Enemy[i]->UpdateAABB();
+						Missile[j]->UpdateAABB();
+
+						if (Missile[j]->CollisionObject(Enemy[i]))
+						{
+							Missile[j]->Delete();
+
+							CEffect *pEffect = new CEffect();
+							pEffect->SetPosition(Missile[j]->GetPosition());
+							pEffectShader->AddObject(pEffect, EFFECT_TYPE_EXPLOSION);
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 void CScene::AnimateObjects(float fTimeElapsed, CCamera *pCamera)
@@ -468,16 +441,10 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
 	pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
 
-
 	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
-
-	if (m_pUserInterface && pCamera->GetMode() & FIRST_PERSON_CAMERA)
-		m_pUserInterface->Render(pd3dCommandList, pCamera);
-
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 
 	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
-
 }
 

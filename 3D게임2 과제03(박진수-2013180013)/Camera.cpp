@@ -145,6 +145,14 @@ void CCamera::SetViewportsAndScissorRects(ID3D12GraphicsCommandList *pd3dCommand
 	pd3dCommandList->RSSetScissorRects(1, &m_d3dScissorRect);
 }
 
+void CCamera::TurnCamera()
+{
+	m_xmf3Look = XMFLOAT3(-m_xmf3Look.x, -m_xmf3Look.y, -m_xmf3Look.z);
+	m_xmf3Right = Vector3::CrossProduct(m_xmf3Look, m_xmf3Up);
+
+	RegenerateViewMatrix();
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CFirstPersonCamera
 
